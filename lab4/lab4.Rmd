@@ -1,0 +1,311 @@
+---
+title: "Lab 4"
+author: "Kaitlin Smith"
+date: "11/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(ggpubr)
+library(dplyr)
+library(corrplot)
+library(purrr)
+```
+
+## TL;DR
+
+Quick overview: 
+1. I didn't find any outliers
+
+2. I created the feature with the average NDAI score that we talked about in lab.
+Right now, the code takes about an hour to run for the 3 images, so I'd recommend downloading the data I uploaded 
+(if anyone could improve it, that would be great!)
+
+3. Data:
+
+each image is stored in a dataframe: img1, img2, and img3
+
+I added the following features:
+
+1. label_final: this changed all of the "0"- unlabeled pixels to "1" - cloud pixels
+
+2. Avg_NDAI: average NDAI score for the [(x-4,y-4),(x+4),(y+4)] box around each pixel (this was a little tricky to calcultae, because 
+the images aren't perfectly square. If a 9x9 square could not be created for a pixel, the largest area around that pixel wihtin the constraint was found and the average was taken for whatever number of pixels was in the area.)
+
+3. Sub_feat: I tried to replicate the NDAI metric by finding (DF*CF - AF*AN) / (DF*CF + AF*AN). It looks like this 
+didn't work great by the correlation matrices 
+
+4. Mult_Rads: I multiplied DF, CF, BF, AF, AN together for each pixel. 
+The rational behind this was that each radiation angle appears to be 
+hightly correlated with each other
+
+5. Mult_AvgNDAI_SD: I multiplied the Avg_NDAI by SD. It doesn't look
+like this improved the AvgNDAI metric 
+
+
+
+
+## EDA
+
+```{r}
+feature_names <- c("x", "y", "label", "NDAI", "SD","CORR", "DF", "CF", "BF", "AF", "AN")
+img1 <- read.table("data/image_data/image1.txt")
+colnames(img1) <- feature_names
+img2 <- read.table("data/image_data/image2.txt")
+colnames(img2) <- feature_names
+img3 <- read.table("data/image_data/image3.txt")
+colnames(img3) <- feature_names
+```
+
+## Basic EDA/ Check if we need to do any Data Cleaning
+
+Quick check for outliers:
+
+```{r}
+generate_boxplot <- function(data){
+  boxplot(data)
+}
+
+invisible(apply(img1[,4:11], MARGIN = 2, generate_boxplot)) # use invisible to suppress boxplot printed output
+
+invisible(apply(img2[,4:11], MARGIN = 2, generate_boxplot))
+
+invisible(apply(img3[,4:11], MARGIN = 2, generate_boxplot)) 
+```
+It appears that there aren't any clear outliers/ missing data. This won't be 
+in the final report, but I kept this in if anyone was curious of if you 
+wanted to see the distributions of all of the features. 
+
+
+```{r fid.width = 20}
+
+heatmap_ggplot <- function(index, img){
+  return(ggplot(img, aes(x = x,y = y, fill = img[,index])) + geom_tile() + labs(title = colnames(img)[index]))
+}
+
+maps <- lapply(3:11, heatmap_ggplot, img1)
+
+ggarrange(plotlist = maps)
+```
+
+```{r}
+maps2 <- lapply(3:11, heatmap_ggplot, img2)
+
+ggarrange(plotlist = maps2)
+```
+
+```{r}
+maps3 <- apply(3:11], MARGIN = 2, heatmap_ggplot, img3)
+
+ggarrange(plotlist = maps3)
+```
+## Rational for Converting Unlabeled pixels to "Cloud" Labels 
+
+In the plots bellow, it appears that the distribution of the cloud labels 
+is contained in the labels that were unlabeled. For this reason, 
+we will consider the unlabeled pixels as cloudy pixels. 
+
+```{r}
+# TODO: CHANGE COLORS
+
+ndai_label1 <- ggplot(img1, aes(x = NDAI, fill = factor(label))) + geom_density(alpha = 0.4)+ labs(title = "Image1") + scale_fill_manual(labels=c("Not Cloud", "Unlabeled", "Cloud"), values = c("blue", "red", "green"))
+
+ndai_label2 <- ggplot(img2, aes(x = NDAI, fill = factor(label))) + geom_density(alpha = 0.4) + labs(title = "Image2") + scale_fill_manual(labels=c("Not Cloud", "Unlabeled", "Cloud"), values = c("blue", "red", "green"))
+
+ndai_label3 <- ggplot(img3, aes(x = NDAI, fill = factor(label))) + geom_density(alpha = 0.4) + labs(title = "Image3") +scale_fill_manual(labels=c("Not Cloud", "Unlabeled", "Cloud"), values = c("blue", "red", "green"))
+
+ggarrange(ndai_label1, ndai_label2, ndai_label3)
+```
+Below, I'll add a "label_final" feature that converts all of the 
+unlabeled pixels to cloud labels 
+
+```{r}
+img1$label_final <- replace(img1$label, x == 0, 1)
+img2$label_final <- replace(img2$label, x == 0, 1)
+img3$label_final <- replace(img3$label, x == 0, 1)
+
+```
+
+
+
+## Correlation Matrices, Two Ways
+
+```{r}
+
+M <- cor(img1)
+
+corrplot(M, method="number")
+
+M2 <- cor(img2)
+
+corrplot(M2, method="number")
+
+M3 <- cor(img3)
+
+corrplot(M3, method="number")
+```
+
+You can see in the above correlation matrices, that it appears that NDAI
+is the feature that is most correlated with the expert label. 
+For image1 and image2, it appears that the angles of radiance also have a negative correlation. However, image3 does not have this relationship. 
+with the labels. In addition, it appears that NDAI and SD have a positive correlation.
+
+## Feature Engineering 
+
+First, here's a summary of the features that have already been engineered 
+for us. Note that for each radiance angle measurement at each pixel, there are 64 radiation measurements.
+
+1. CORR:
+
+This feature is an average of the average linear combination 
+between the Af/An and Bf/An radiance angle pairs. Clouds produce
+low correlation measures, unless the clouds are in motion. Higher correlation
+indicates no clouds or a low altitude cloud. 
+
+2. SD:
+
+This feature is computed by finding the standard deviation within groups
+of the An radiance angle. This feature can help identify smooth
+surfaces, which are typical of clouds. However, if the ground 
+also had a smooth surface, this feature is not as informative.
+
+3. NDAI:
+
+This feature is computed by finding the difference in the average Df and 
+average An radiance angle for each pixel, divided by the sum of these two numbers.
+
+
+### Average NDAI 
+
+From the correlation matrix, it appeared that NDAI was the feature 
+that was most correlated with the labels. Intuitively, the spacial aspect 
+of this data is important. We expect "cloud" pixels and "not cloud" pixels 
+to be clustered together. Or, if a label is "cloud", we would expect 
+the other pixels around it to also be labeled as "cloud". Thus, we'll
+construct a feature whose values for a given pixel is the average of the 
+NDAI values for the 8 pixels around the pixel. If a pixel is on the edge of 
+the image, the minimum value of $(x, mod(x + 4, max(x val)))$ is taken. 
+
+
+```{r}
+# # converted the dataframe to matrices for speed-up
+# data <- as.matrix(img1[c("x", "y", "NDAI")])
+# get_average_matrix <- function(index){
+# 
+#   this_y <- data[index, 2]
+#   this_x <- data[index, 1]
+#   # get all of the columns with x and y values in the range we want. This works even if the area we find is not square (because the data isn't #   square). Then find the mean of the NDAI column for this region
+# 
+#   avg <- mean((data[data[,1] >= this_x - 4 & data[,1] <= this_x + 4 & data[,2] >= this_y - 4 & data[,2] <= this_y + 4, ])[,3]) 
+#   
+#   return(avg)
+# }
+# 
+# avg_NDAI_img1 <- lapply(1:nrow(img1), get_average_matrix)
+
+```
+```{r}
+# img2_matrix <- as.matrix(img2[c("x", "y", "NDAI")])
+# get_average_matrix_img2 <- function(index){
+# 
+#   this_y <- img2_matrix[index, 2]
+#   this_x <- img2_matrix[index, 1]
+# 
+#   avg <- mean((img2_matrix[img2_matrix[,1] >= this_x - 4 & img2_matrix[,1] <= this_x + 4 & img2_matrix[,2] >= this_y - 4 & img2_matrix[,2] <= this_y + 4, ])[,3])
+#   
+#   return(avg)
+# }
+# 
+# img3_matrix <- as.matrix(img3[c("x", "y", "NDAI")])
+# get_average_matrix_img3 <- function(index){
+# 
+#   this_y <- img3_matrix[index, 2]
+#   this_x <- img3_matrix[index, 1]
+# 
+#   avg <- mean((img3_matrix[img3_matrix[,1] >= this_x - 4 & img3_matrix[,1] <= this_x + 4 & img3_matrix[,2] >= this_y - 4 & img3_matrix[,2] <= this_y + 4, ])[,3])
+#   
+#   return(avg)
+# }
+# 
+# avg_NDAI_img2 <- lapply(1:nrow(img2), get_average_matrix_img2)
+# 
+# avg_NDAI_img3 <- lapply(1:nrow(img3), get_average_matrix_img3)
+
+```
+
+
+
+```{r}
+# img1$Avg_NDAI <- unlist(avg_NDAI_img1)
+# 
+# img2$Avg_NDAI <- unlist(avg_NDAI_img2)
+# 
+# img3$Avg_NDAI <- unlist(avg_NDAI_img3)
+```
+
+### Other Features
+
+```{r}
+
+modify_rad <- function(DF, CF, AF, AN){
+  return((DF*CF - AN*AF)/(DF*CF + AN*AF))
+}
+
+mult_rad <- function(DF, CF, BF, AF, AN){
+  return(DF * CF * AF * AN)
+}
+
+mult_ndai_sd <- function(ndai, sd){
+  return(ndai * sd)
+}
+
+# new features for image 1
+
+img1 <- img1 %>% mutate(Sub_Feat = unlist(pmap(img1[c("DF", "CF", "AF", "AN")], function(DF, CF, AF, AN) modify_rad(DF = DF, CF = CF, AF = AF, AN = AN))))
+
+img1 <- img1 %>% mutate(Mult_Rads = unlist(pmap(img1[c("DF", "CF", "BF", "AF", "AN")], function(DF, CF, BF, AF, AN) mult_rad(DF = DF, CF = CF, BF = BF, AF = AF, AN = AN))))
+
+img1 <- img1 %>% mutate(Mult_AvgNDAi_SD = unlist(pmap(img1[c("Avg_NDAI", "SD")], function(Avg_NDAI, SD) mult_ndai_sd(ndai = Avg_NDAI, sd = SD))))
+
+# repeat for image 2
+img2 <- img2 %>% mutate(Sub_Feat = unlist(pmap(img2[c("DF", "CF", "AF", "AN")], function(DF, CF, AF, AN) modify_rad(DF = DF, CF = CF, AF = AF, AN = AN))))
+
+img2 <- img2 %>% mutate(Mult_Rads = unlist(pmap(img2[c("DF", "CF", "BF", "AF", "AN")], function(DF, CF, BF, AF, AN) mult_rad(DF = DF, CF = CF, BF = BF, AF = AF, AN = AN))))
+
+img2 <- img2 %>% mutate(Mult_AvgNDAi_SD = unlist(pmap(img2[c("Avg_NDAI", "SD")], function(Avg_NDAI, SD) mult_ndai_sd(ndai = Avg_NDAI, sd = SD))))
+
+# repeat for image 3
+img3 <- img3 %>% mutate(Sub_Feat = unlist(pmap(img3[c("DF", "CF", "AF", "AN")], function(DF, CF, AF, AN) modify_rad(DF = DF, CF = CF, AF = AF, AN = AN))))
+
+img3 <- img3 %>% mutate(Mult_Rads = unlist(pmap(img3[c("DF", "CF", "BF", "AF", "AN")], function(DF, CF, BF, AF, AN) mult_rad(DF = DF, CF = CF, BF = BF, AF = AF, AN = AN))))
+
+img3 <- img3 %>% mutate(Mult_AvgNDAi_SD = unlist(pmap(img3[c("Avg_NDAI", "SD")], function(Avg_NDAI, SD) mult_ndai_sd(ndai = Avg_NDAI, sd = SD))))
+
+```
+
+
+
+```{r fig.width = 15}
+
+M <- cor(img1)
+
+corrplot(M, method="number")
+
+M2 <- cor(img2)
+
+corrplot(M2, method="number")
+
+M3 <- cor(img3)
+
+corrplot(M3, method="number")
+```
+
+```{r}
+# save data
+write.csv(img1, "data/img1_features.csv", row.names = FALSE)
+write.csv(img2, "data/img2_features.csv", row.names = FALSE)
+write.csv(img3, "data/img3_features.csv", row.names = FALSE)
+```
+
