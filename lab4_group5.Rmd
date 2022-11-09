@@ -69,8 +69,7 @@ colnames(img3) <- feature_names
 <br> 
 <br> 
 
-```{r image1, fig.width = 20, fig.height=20, out.width='100%', out.height='100%', fig.cap="Plotting features for image1 on maps" }
-
+```{r image1, fig.width = 15, fig.height=10, fig.asp= 0.6, out.width='100%', out.height='100%', fig.cap="Plotting features for image1 on maps" }
 heatmap_ggplot <- function(index, img){
   return(ggplot(img, aes(x = x,y = y, fill = img[,index])) + geom_tile() + labs(title = colnames(img)[index]))
 }
@@ -79,12 +78,12 @@ maps <- lapply(3:11, heatmap_ggplot, img1)
 
 ggarrange(plotlist = maps)
 ``` 
-```{r, image2, fid.width = 10, fig.height=10, dpi=72, fig.asp= 0.6, fig.cap="Plotting features for image2 on maps" }
+```{r, image2, fig.width = 10, fig.height=10, dpi=72, fig.asp= 0.6, fig.cap="Plotting features for image2 on maps" }
 maps2 <- lapply(3:11, heatmap_ggplot, img2)
 
 ggarrange(plotlist = maps2)
 ```
-```{r, fid.width = 30, fig.height=10, fig.cap="Plotting features for image3 on maps" }
+```{r, fig.width = 10, fig.height=10, fig.asp= 0.6, fig.cap="Plotting features for image3 on maps" }
 maps3 <- lapply(3:11, heatmap_ggplot, img3)
 
 ggarrange(plotlist = maps3)
@@ -117,17 +116,18 @@ img3$label_final <- replace(img3$label, img3$label == 0, 1)
 
   Our next step was exploring the correlation of our features to the labels for each image. As shown below, it appears that NDAI has the strongest correlation with the labels. For image1 and image2, it appears that the angles of radiance also have a negative correlation. However, image3 does not have this relationship with the labels. In addition, it appears that NDAI and SD have a positive correlation.
   
-```{r, fig.width = 20, fig.cap="Plotting two-way correlation matrices of the features for image1." }
+```{r, fig.asp = 0.7, fig.width=15, fig.cap="Plotting two-way correlation matrices of the features for images 1,2 and 3." }
+
+par(mfrow = c(2, 2))
+
 M <- cor(img1)
 
 corrplot(M, method="number")
-```
-```{r, fig.width = 8, fig.asp = 0.5, fig.cap="Plotting two-way correlation matrices of the features for image2." }
+
 M2 <- cor(img2)
 
 corrplot(M2, method="number")
-```
-```{r, fig.width = 8, fig.asp = 0.5, fig.cap="Plotting two-way correlation matrices of the features for image3." }
+
 M3 <- cor(img3)
 
 corrplot(M3, method="number")
@@ -249,7 +249,9 @@ the image, the minimum value of $(x, mod(x + 4, max(x val)))$ is taken.
 
 
 
-```{r fig.asp = 20}
+```{r fig.asp = 0.7, fig.width=15}
+
+par(mfrow = c(2, 2))
 
 M <- cor(img1)
 
