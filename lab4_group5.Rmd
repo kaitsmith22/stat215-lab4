@@ -1,0 +1,308 @@
+---
+title: "Lab 4 - Cloud Data, Stat 215A, Fall 2022"
+author: "Sizhu Lu, Kaitlin Smith, Ghafar Yerima"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+header-includes:
+   - \usepackage{float}
+output: 
+  pdf_document:
+    number_sections: true
+---
+
+```{r setup, echo = FALSE, message=FALSE, warning=FALSE}
+# load in useful packages
+library(tidyverse)
+library(stringr)
+library(ggplot2)
+library(ggpubr)
+library(dplyr)
+library(corrplot)
+library(purrr)
+library(gridExtra)
+library(knitr)
+
+# set default knitr chunks
+knitr::opts_chunk$set(
+  echo = FALSE,  # don't print the code chunk
+  warning = FALSE,  # don't print warnings
+  message = FALSE,  # don't print messages
+  fig.width = 6,  # set default width of figures
+  fig.height = 4,  # set default height of figures
+  fig.align = "center",  # always align figure in center
+  fig.pos = "H",  # always plot figure at the exact location of the code chunk
+  cache = FALSE)  # don't cache results
+
+```
+
+```{r load-data, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+feature_names <- c("x", "y", "label", "NDAI", "SD","CORR", "DF", "CF", "BF", "AF", "AN")
+img1 <- read.table("data/image_data/image1.txt")
+colnames(img1) <- feature_names
+img2 <- read.table("data/image_data/image2.txt")
+colnames(img2) <- feature_names
+img3 <- read.table("data/image_data/image3.txt")
+colnames(img3) <- feature_names
+```
+
+# Introduction
+
+  Global warming is characterized by the rapid increase in Earth's surface temperature over the past century; It is due primarily to human activities including fossil fuels burning, which increases greenhouse gases (Rexford 2020). The Earth surface temperature has increased by nearly 1 degree Celsius between 1905 and 2005, and is predicted to increase between 2-6 degree Celsius by the end of the 21st century (Rexford 2020). Models have predicted that the strongest dependencies between greenhouse gases level and earth's surface temperature will occur at the Arctic (Shi et al. 2008). As the Arctic warms faster the rest of the globe, alterations in the properties and distribution of ice-and snow-covered surfaces, atmospheric vapor, and clouds can lead to further warming, and more susceptibility to greenhouse gases levels (Shi et al. 2008). To understand these intricate relationships, a study of the cloud coverage at the Arctic is necessary as clouds play a crucial role in tuning the sensitivity of the Arctic to the rise of surface air temperatures (Shi et al. 2008).\  
+  
+  However, studying Arctic clouds is challenging because liquid and ice water cloud particles have similar physical properties to ice and snow surfaces particles. Thus, distinguishing Arctic clouds from water or ice using their electromagnetic radiation is challenging. Thanks to a National Aeronautics, and Space Administration (NASA) effort, a Multiangle Imaging SpectroRadiometer (MISR) was launched on the Terra satellite in 1999. This radiometer produces novel radiation measurements from nine view angles. The nine view zenith angles of the cameras are 70.5" (Df), 60.0" (Cf), 45.6" (Bf), and 26.1" (Af) in the forward direction; 0.0" (An) in the nadir direction and 26.1" (Aa), 45.6" (Ba), 60.0" (Ca), and 70.5" (Da) in the aft direction. Thus, the MISR produces a large amount of data thanks to its 360 km-wide swath coverage on the Earth's surface that extends from the Arctic down to Antarctica in approximately 45 minutes.\  
+
+  Although the MISR produces a high resolution data, its operational cloud detection system was designed before its launch and proved to not be effective for detecting clouds over bright surfaces in polar regions. Solving the polar cloud detection problem requires efficient statistical models, capable of handling the massive data set while incorporating scientific and operational considerations.\  
+  
+  In this paper, we explored a MISR data of polar regions and implemented various polar cloud detection algorithms based on expert labels. The algorithms implemented include logistic regression (w/ & w/o regularization), KNN, SVM, RF, and a Bayesian method. Ultimately, we aimed to design algorithms that will perform well on data sets lacking any expert labels. 
+  
+
+# Data
+
+  Our data comprises 3 images which represent pictures taken from the MISR. Each image text file comprises 11 columns. The first two columns represent the y and x coordinates of the pixel, and the third column represent the expert label (+1= cloud, -1= not cloud, 0= unlabeled). The fourth, fifth, and sixth columns were features engineered by Shi et. al. They are: the Normalized Difference Angular Index (NDAI) which characterizes the variations in a scene with the variations in the MISR view direction, the standard deviation (SD) of MISR nadir camera pixel values across a scene, and the correlation (CORR) of MISR images of the same scene from different MISR viewing directions (). Columns 7 to 11 represent the radiance angles DF, CF, BF, AF, and AN from the MISR.
+  
+## Data Collection
+
+  The data used in our study is a subset of the MISR data set from Shi et. al. It was collected from 10 MISR orbits of path 26 over the Arctic, Northern Greenland, and Baffin Bay (Shi et al. 2008). As the MISR collects data from 233 geographically distinct but overlapping paths on a repeat cycle over 16 days, the 10 orbits spanned approximately 144 days from April 28 to September 19, 2002. Path 26 was chosen for the richness of its surface features and their relative stability over the study period. From the 6 data units per orbits included in their study, 3 were excluded as they were open water after the ice melted over the summer.  
+
+## Data Exploration
+
+  We began our data exploration by plotting the features of each image over the maps.\  
+<br> 
+<br> 
+
+```{r image1, fig.width = 20, fig.height=20, out.width='100%', out.height='100%', fig.cap="Plotting features for image1 on maps" }
+
+heatmap_ggplot <- function(index, img){
+  return(ggplot(img, aes(x = x,y = y, fill = img[,index])) + geom_tile() + labs(title = colnames(img)[index]))
+}
+
+maps <- lapply(3:11, heatmap_ggplot, img1)
+
+ggarrange(plotlist = maps)
+``` 
+```{r, image2, fid.width = 10, fig.height=10, dpi=72, fig.asp= 0.6, fig.cap="Plotting features for image2 on maps" }
+maps2 <- lapply(3:11, heatmap_ggplot, img2)
+
+ggarrange(plotlist = maps2)
+```
+```{r, fid.width = 30, fig.height=10, fig.cap="Plotting features for image3 on maps" }
+maps3 <- lapply(3:11, heatmap_ggplot, img3)
+
+ggarrange(plotlist = maps3)
+```
+  
+## Rational for Converting Unlabeled pixels to "Cloud" Labels 
+
+  Next, we explored the distribution of the cloud labels. It appeared that the cloud labels is contained in the labels that were unlabeled. For this reason, we decided to consider the unlabeled pixels as cloudy pixels.
+
+```{r , fig.cap="Plotting distributions of cloud expert labels" }
+# TODO: CHANGE COLORS
+
+ndai_label1 <- ggplot(img1, aes(x = NDAI, fill = factor(label))) + geom_density(alpha = 0.4)+ labs(title = "Image1") + scale_fill_manual(labels=c("Not Cloud", "Unlabeled", "Cloud"), values = c("blue", "red", "green"))
+
+ndai_label2 <- ggplot(img2, aes(x = NDAI, fill = factor(label))) + geom_density(alpha = 0.4) + labs(title = "Image2") + scale_fill_manual(labels=c("Not Cloud", "Unlabeled", "Cloud"), values = c("blue", "red", "green"))
+
+ndai_label3 <- ggplot(img3, aes(x = NDAI, fill = factor(label))) + geom_density(alpha = 0.4) + labs(title = "Image3") +scale_fill_manual(labels=c("Not Cloud", "Unlabeled", "Cloud"), values = c("blue", "red", "green"))
+
+ggarrange(ndai_label1, ndai_label2, ndai_label3)
+```
+
+Thus, we added "label_final" feature that converts all of the unlabeled pixels to cloud labels. 
+
+```{r}
+img1$label_final <- replace(img1$label, img1$label == 0, 1)
+img2$label_final <- replace(img2$label, img2$label == 0, 1)
+img3$label_final <- replace(img3$label, img3$label == 0, 1)
+
+```
+
+  Our next step was exploring the correlation of our features to the labels for each image. As shown below, it appears that NDAI has the strongest correlation with the labels. For image1 and image2, it appears that the angles of radiance also have a negative correlation. However, image3 does not have this relationship with the labels. In addition, it appears that NDAI and SD have a positive correlation.
+  
+```{r, fig.width = 20, fig.cap="Plotting two-way correlation matrices of the features for image1." }
+M <- cor(img1)
+
+corrplot(M, method="number")
+```
+```{r, fig.width = 8, fig.asp = 0.5, fig.cap="Plotting two-way correlation matrices of the features for image2." }
+M2 <- cor(img2)
+
+corrplot(M2, method="number")
+```
+```{r, fig.width = 8, fig.asp = 0.5, fig.cap="Plotting two-way correlation matrices of the features for image3." }
+M3 <- cor(img3)
+
+corrplot(M3, method="number")
+
+```
+
+
+# Modeling
+
+## Feature Engineering 
+
+### Average NDAI 
+
+From the correlation matrix, it appeared that NDAI was the feature 
+that was most correlated with the labels. Intuitively, the spacial aspect 
+of this data is important. We expect "cloud" pixels and "not cloud" pixels 
+to be clustered together. Or, if a label is "cloud", we would expect 
+the other pixels around it to also be labeled as "cloud". Thus, we'll
+construct a feature whose values for a given pixel is the average of the 
+NDAI values for the 8 pixels around the pixel. If a pixel is on the edge of 
+the image, the minimum value of $(x, mod(x + 4, max(x val)))$ is taken. 
+
+
+```{r}
+# # converted the dataframe to matrices for speed-up
+# data <- as.matrix(img1[c("x", "y", "NDAI")])
+# get_average_matrix <- function(index){
+# 
+#   this_y <- data[index, 2]
+#   this_x <- data[index, 1]
+#   # get all of the columns with x and y values in the range we want. This works even if the area we find is not square (because the data isn't #   square). Then find the mean of the NDAI column for this region
+# 
+#   avg <- mean((data[data[,1] >= this_x - 4 & data[,1] <= this_x + 4 & data[,2] >= this_y - 4 & data[,2] <= this_y + 4, ])[,3]) 
+#   
+#   return(avg)
+# }
+# 
+# avg_NDAI_img1 <- lapply(1:nrow(img1), get_average_matrix)
+
+```
+```{r}
+# img2_matrix <- as.matrix(img2[c("x", "y", "NDAI")])
+# get_average_matrix_img2 <- function(index){
+# 
+#   this_y <- img2_matrix[index, 2]
+#   this_x <- img2_matrix[index, 1]
+# 
+#   avg <- mean((img2_matrix[img2_matrix[,1] >= this_x - 4 & img2_matrix[,1] <= this_x + 4 & img2_matrix[,2] >= this_y - 4 & img2_matrix[,2] <= this_y + 4, ])[,3])
+#   
+#   return(avg)
+# }
+# 
+# img3_matrix <- as.matrix(img3[c("x", "y", "NDAI")])
+# get_average_matrix_img3 <- function(index){
+# 
+#   this_y <- img3_matrix[index, 2]
+#   this_x <- img3_matrix[index, 1]
+# 
+#   avg <- mean((img3_matrix[img3_matrix[,1] >= this_x - 4 & img3_matrix[,1] <= this_x + 4 & img3_matrix[,2] >= this_y - 4 & img3_matrix[,2] <= this_y + 4, ])[,3])
+#   
+#   return(avg)
+# }
+# 
+# avg_NDAI_img2 <- lapply(1:nrow(img2), get_average_matrix_img2)
+# 
+# avg_NDAI_img3 <- lapply(1:nrow(img3), get_average_matrix_img3)
+
+```
+
+
+
+```{r}
+#img1$Avg_NDAI <- unlist(avg_NDAI_img1)
+# 
+#img2$Avg_NDAI <- unlist(avg_NDAI_img2)
+# 
+#img3$Avg_NDAI <- unlist(avg_NDAI_img3)
+```
+
+### Other Features
+
+```{r}
+
+# modify_rad <- function(DF, CF, AF, AN){
+#   return((DF*CF - AN*AF)/(DF*CF + AN*AF))
+# }
+# 
+# mult_rad <- function(DF, CF, BF, AF, AN){
+#   return(DF * CF * AF * AN)
+# }
+# 
+# mult_ndai_sd <- function(ndai, sd){
+#   return(ndai * sd)
+# }
+# 
+# # new features for image 1
+# 
+# img1 <- img1 %>% mutate(Sub_Feat = unlist(pmap(img1[c("DF", "CF", "AF", "AN")], function(DF, CF, AF, AN) modify_rad(DF = DF, CF = CF, AF = AF, AN = AN))))
+# 
+# img1 <- img1 %>% mutate(Mult_Rads = unlist(pmap(img1[c("DF", "CF", "BF", "AF", "AN")], function(DF, CF, BF, AF, AN) mult_rad(DF = DF, CF = CF, BF = BF, AF = AF, AN = AN))))
+# 
+# img1 <- img1 %>% mutate(Mult_AvgNDAi_SD = unlist(pmap(img1[c("Avg_NDAI", "SD")], function(Avg_NDAI, SD) mult_ndai_sd(ndai = Avg_NDAI, sd = SD))))
+# 
+# # repeat for image 2
+# img2 <- img2 %>% mutate(Sub_Feat = unlist(pmap(img2[c("DF", "CF", "AF", "AN")], function(DF, CF, AF, AN) modify_rad(DF = DF, CF = CF, AF = AF, AN = AN))))
+# 
+# img2 <- img2 %>% mutate(Mult_Rads = unlist(pmap(img2[c("DF", "CF", "BF", "AF", "AN")], function(DF, CF, BF, AF, AN) mult_rad(DF = DF, CF = CF, BF = BF, AF = AF, AN = AN))))
+# 
+# img2 <- img2 %>% mutate(Mult_AvgNDAi_SD = unlist(pmap(img2[c("Avg_NDAI", "SD")], function(Avg_NDAI, SD) mult_ndai_sd(ndai = Avg_NDAI, sd = SD))))
+# 
+# # repeat for image 3
+# img3 <- img3 %>% mutate(Sub_Feat = unlist(pmap(img3[c("DF", "CF", "AF", "AN")], function(DF, CF, AF, AN) modify_rad(DF = DF, CF = CF, AF = AF, AN = AN))))
+# 
+# img3 <- img3 %>% mutate(Mult_Rads = unlist(pmap(img3[c("DF", "CF", "BF", "AF", "AN")], function(DF, CF, BF, AF, AN) mult_rad(DF = DF, CF = CF, BF = BF, AF = AF, AN = AN))))
+# 
+# img3 <- img3 %>% mutate(Mult_AvgNDAi_SD = unlist(pmap(img3[c("Avg_NDAI", "SD")], function(Avg_NDAI, SD) mult_ndai_sd(ndai = Avg_NDAI, sd = SD))))
+
+```
+
+
+
+```{r fig.asp = 20}
+
+M <- cor(img1)
+
+corrplot(M, method="number")
+
+M2 <- cor(img2)
+
+corrplot(M2, method="number")
+
+M3 <- cor(img3)
+
+corrplot(M3, method="number")
+```
+
+```{r}
+# save data
+write.csv(img1, "data/img1_features.csv", row.names = FALSE)
+write.csv(img2, "data/img2_features.csv", row.names = FALSE)
+write.csv(img3, "data/img3_features.csv", row.names = FALSE)
+```
+
+
+## Finding
+
+```{r finding1, echo = FALSE, message = FALSE, warning = FALSE, cache = FALSE, include=TRUE, fig.height = 8, fig.width = 14 }
+
+```
+
+
+## Reality Check
+
+
+## Stability Check
+
+```{r stability, echo = FALSE, message = FALSE, warning = FALSE, cache = FALSE, include=TRUE, fig.height = 10, fig.width = 16 }
+
+```
+
+# Discussion
+
+
+# Conclusion
+
+
+# Academic honesty statement
+
+
+# Collaborators
+
+
+# Bibliography
+
+Ahima S. Rexford (2020) Global warming threatens human thermoregulation and survival, J Clin Invest, 130(2):559-561, DOI: 10.1172/JCI135006. 
+
+Tao Shi, Bin Yu, Eugene E Clothiaux & Amy J Braverman (2008) Daytime Arctic Cloud Detection Based on Multi-Angle Satellite Data With Case Studies, Journal of the American Statistical Association, 103:482, 584-593, DOI: 10.1198/016214507000001283.
+
