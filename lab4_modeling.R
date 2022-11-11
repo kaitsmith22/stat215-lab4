@@ -1,8 +1,5 @@
 # lab4 modeling part
 
-# suggestions for eda:
-# plot ggpairs
-
 library(dplyr)
 library(ROCR)
 library(glmnet)
@@ -68,8 +65,8 @@ img3 <- img3_raw %>%
 
 # --- specify the test set, training set, and validation set --- #
 # divide each image into 4 blocks - 12 blocks in total
-# randomly pick 2 of them to be the test set (15 - 20%)
-# and split the remaining 10 to training and validation
+# randomly pick 4 of them to be the test set
+# and split the remaining 8 to training and validation
 img1$block <-
   1 * (img1$x <= median(img1$x) & img1$y <= median(img1$y)) +
   2 * (img1$x > median(img1$x) & img1$y <= median(img1$y)) +
@@ -196,7 +193,7 @@ err_metric_res
 # --- 5. RF --- #
 cv_data$label_final_factor <- as.factor(cv_data$label_final)
 rf_model <- randomForest(label_final_factor ~ NDAI + SD + CORR + Avg_NDAI + DF + CF + BF + AF + AN,
-                       data = cv_data[random_sample_index,], mtry = 5, importance = TRUE)
+                         data = cv_data[random_sample_index,], mtry = 5, importance = TRUE)
 importance(rf_model)
 varImpPlot(rf_model)
 # summary(rf_model)
