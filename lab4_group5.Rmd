@@ -88,7 +88,10 @@ maps3 <- lapply(3:11, heatmap_ggplot, img3)
 
 ggarrange(plotlist = maps3)
 ```
+
+  Looking at the initial expert labels for image 1 and 3, we notice that the clouds occupy roughly the third of the map. However, the proportion of labelled clouds on image 2 is substantially larger. The different radiance angles seem to be correlated for the most part. They show approximately the same distribution and intensity of pixels. 
   
+
 ## Rational for Converting Unlabeled pixels to "Cloud" Labels 
 
   Next, we explored the distribution of the cloud labels. It appeared that the cloud labels is contained in the labels that were unlabeled. For this reason, we decided to consider the unlabeled pixels as cloudy pixels.
@@ -105,7 +108,7 @@ ndai_label3 <- ggplot(img3, aes(x = NDAI, fill = factor(label))) + geom_density(
 ggarrange(ndai_label1, ndai_label2, ndai_label3)
 ```
 
-Thus, we added "label_final" feature that converts all of the unlabeled pixels to cloud labels. 
+Thus, we added "label_final" feature that converts all of the unlabeled pixels to cloud labels. Following this conversion, we notice that our images now contain more cloudy pixels than non-cloudy ones.
 
 ```{r}
 img1$label_final <- replace(img1$label, img1$label == 0, 1)
@@ -114,7 +117,8 @@ img3$label_final <- replace(img3$label, img3$label == 0, 1)
 
 ```
 
-  Our next step was exploring the correlation of our features to the labels for each image. As shown below, it appears that NDAI has the strongest correlation with the labels. For image1 and image2, it appears that the angles of radiance also have a negative correlation. However, image3 does not have this relationship with the labels. In addition, it appears that NDAI and SD have a positive correlation.
+  Our next step was exploring the features quantitatively. Thus, we investigated the correlation of our features to the labels for each image. As shown below, it appears that NDAI has the strongest correlation with the labels. For image1 and image2, it appears that the angles of radiance also have a negative correlation. However, image3 does not have this relationship with the labels. In addition, it appears that NDAI and SD have a positive correlation.
+  
   
 ```{r, fig.asp = 0.7, fig.width=15, fig.cap="Plotting two-way correlation matrices of the features for images 1,2 and 3." }
 
@@ -122,15 +126,15 @@ par(mfrow = c(2, 2))
 
 M <- cor(img1)
 
-corrplot(M, method="number")
+corrplot(M, method="number", title = "Image 1",mar=c(0,0,2,0))
 
 M2 <- cor(img2)
 
-corrplot(M2, method="number")
+corrplot(M2, method="number", title = "Image 2", mar=c(0,0,2,0))
 
 M3 <- cor(img3)
 
-corrplot(M3, method="number")
+corrplot(M3, method="number", title = "Image 3",mar=c(0,0,2,0))
 
 ```
 
@@ -255,15 +259,15 @@ par(mfrow = c(2, 2))
 
 M <- cor(img1)
 
-corrplot(M, method="number")
+corrplot(M, method="number", title = "Image 1",mar=c(0,0,2,0))
 
 M2 <- cor(img2)
 
-corrplot(M2, method="number")
+corrplot(M2, method="number", title = "Image 2",mar=c(0,0,2,0))
 
 M3 <- cor(img3)
 
-corrplot(M3, method="number")
+corrplot(M3, method="number", title = "Image 3",mar=c(0,0,2,0))
 ```
 
 ```{r}
