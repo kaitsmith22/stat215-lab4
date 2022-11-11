@@ -165,6 +165,17 @@ err_metric_res <- rbind(err_metric_res,
                         cbind(err_metric(knn_confusion_mat), method = "knn"))
 err_metric_res
 
+
+set.seed(215)
+random_sample_index <- sample(1:dim(cv_data)[1], 100000, F)
+start_time <- Sys.time()
+knn_model <- knn(train = training_scale,
+                 test = test_scale,
+                 cl = cv_data[random_sample_index,]$label_final,
+                 k = 5)
+end_time <- Sys.time()
+
+
 # --- 3. SVM --- #
 svm_model <- svm(label_final ~ NDAI + SD + CORR + Avg_NDAI + DF + CF + BF + AF + AN,
                  data = cv_data[random_sample_index,], probability = TRUE)
@@ -191,9 +202,38 @@ err_metric_res <- rbind(err_metric_res,
 err_metric_res
 
 # --- 5. RF --- #
+
+# 5.1 cross-validation to get the best hyper parameter - mtry
+mtry_list <- 2:9
+rf_accuracy_list <- data.frame()
+for (mtry in mtry_list) {
+  print(mtry)
+  training$label_final_factor <- as.factor(training$label_final)
+  validation$label_final_factor <- as.factor(validation$label_final)
+
+  rf_model <- randomForest(label_final_factor ~ NDAI + SD + CORR + Avg_NDAI + DF + CF + BF + AF + AN,
+                           data = training, mtry = mtry, importance = FALSE)
+  rf_pred <- predict(rf_model, newdata = validation)
+  rf_confusion_mat = table(rf_pred, validation$label_final)
+  accuracy_res <- data.frame(mtry = mtry, accuracy = err_metric(rf_confusion_mat)$accuracy)
+  rf_accuracy_list <- rbind(rf_accuracy_list, accuracy_res)
+}
+plot(rf_accuracy_list)
+write.csv(rf_accuracy_list, "results/rf_cross_validation.csv")
+
+# 5.2 fit the model using all cv_data and mtry = 2
 cv_data$label_final_factor <- as.factor(cv_data$label_final)
 rf_model <- randomForest(label_final_factor ~ NDAI + SD + CORR + Avg_NDAI + DF + CF + BF + AF + AN,
-                         data = cv_data[random_sample_index,], mtry = 5, importance = TRUE)
+                         data = cv_data, mtry = 2, importance = TRUE)
+
+# set.seed(215)
+# random_sample_index <- sample(1:dim(cv_data)[1], 100000, F)
+# start_time <- Sys.time()
+# rf_model <- randomForest(label_final_factor ~ NDAI + SD + CORR + Avg_NDAI + DF + CF + BF + AF + AN,
+#                          data = cv_data[random_sample_index,], mtry = 2, importance = TRUE)
+# end_time <- Sys.time()
+
+
 importance(rf_model)
 varImpPlot(rf_model)
 # summary(rf_model)
@@ -216,7 +256,7 @@ write.csv(err_metric_res, "err_metric_res.csv")
 
 
 # cross-validation to tune hyper parameters
-random_sample_index_training <- sample(1:dim(training)[1], 10000, F)
+random_sample_index_training <- sample(1:dim(training)[1], 50000, F)
 
 # KNN
 k_list <- c(3, 5, 10, 20, 50, 100)
@@ -235,23 +275,6 @@ for (k in k_list) {
   knn_accuracy_list <- rbind(knn_accuracy_list, accuracy_res)
 }
 
-
-# RF
-mtry_list <- 2:9
-rf_accuracy_list <- data.frame()
-
-for (mtry in mtry_list) {
-  print(mtry)
-  training$label_final_factor <- as.factor(training$label_final)
-  validation$label_final_factor <- as.factor(validation$label_final)
-
-  rf_model <- randomForest(label_final_factor ~ NDAI + SD + CORR + Avg_NDAI + DF + CF + BF + AF + AN,
-                           data = training[random_sample_index_training,], mtry = mtry, importance = FALSE)
-  rf_pred <- predict(rf_model, newdata = validation)
-  rf_confusion_mat = table(rf_pred, validation$label_final)
-  accuracy_res <- data.frame(mtry = mtry, accuracy = err_metric(rf_confusion_mat)$accuracy)
-  rf_accuracy_list <- rbind(rf_accuracy_list, accuracy_res)
-}
 
 
 
