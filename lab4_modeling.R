@@ -90,11 +90,11 @@ img3$image <- "image3"
 full_data <- rbind(img1, img2, img3)
 head(full_data)
 
-# randomly pick 2 of them to be the test set
+# randomly pick 4 of them to be the test set
 set.seed(215)
 perm <- sample(1:12, 12, replace=F)
 test <- full_data[full_data$block %in% perm[1:4], ]
-# the remaining 10 blocks: cross validation sample
+# the remaining 8 blocks: cross validation sample
 training <- full_data[full_data$block %in% perm[5:8], ]
 validation <- full_data[full_data$block %in% perm[9:12], ]
 cv_data <- rbind(training, validation)
