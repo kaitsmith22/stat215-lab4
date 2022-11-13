@@ -7,6 +7,8 @@ library(glmnet)
 library(e1071)
 library(randomForest)
 library(class)
+library(tidyr)
+library(ggplot2)
 
 # define functions for future use
 # Compute the ROC and precision-recall curves from the response
@@ -91,6 +93,7 @@ img3$image <- "image3"
 # rbind images and blocks to a full_data dataframe
 full_data <- rbind(img1, img2, img3)
 head(full_data)
+write.csv(full_data, "data/full_data.csv")
 
 # randomly pick 4 of them to be the test set
 set.seed(215)
@@ -277,6 +280,20 @@ roc_pr_rf <- roc_pr_curve(rf_pred, test$label_final)
 # save the prediction results
 write.csv(cbind(rf_pred, rf_pred_binary, test$label_final),
           "results/rf_predictions.csv")
+
+# Error metrics (OOB) for assessing convergence
+error_df <- as.data.frame(rf_model$err.rate) 
+error_df$ntrees <- 1:nrow(err_df)
+
+#plot error curve
+ggplot(error_df, aes(x=ntrees,y=OOB)) + 
+  geom_line(color='blue') + theme_bw() +
+  xlab("Number of trees") + ylab("OOB error") +
+  ggtitle("Convergence Assesment")
+
+#save plot
+ggsave("Error/convergence.png", width = 6, height = 4, device="png")
+
 
 # ------------- 4. QDA ------------- #
 # there is no hyper-parameter for QDA model, so no need to do cross-validation tuning
