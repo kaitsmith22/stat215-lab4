@@ -61,12 +61,12 @@ img3$label_final <- replace(img3$label, img3$label == 0, 1)
 
   Although the MISR produces a high resolution data, its operational cloud detection system was designed before its launch and proved to not be effective for detecting clouds over bright surfaces in polar regions. Solving the polar cloud detection problem requires efficient statistical models, capable of handling the massive data set while incorporating scientific and operational considerations.\  
   
-  In this paper, we explored a MISR data of polar regions and implemented various polar cloud detection algorithms based on expert labels. The algorithms implemented include logistic regression (w/ & w/o regularization), KNN, SVM, RF, and a Bayesian method. Ultimately, we aimed to design algorithms that will perform well on data sets lacking any expert labels. 
+  In this paper, we explored a MISR data of polar regions and implemented various polar cloud detection algorithms based on expert labels. The algorithms implemented include logistic regression (w/ & w/o regularization), KNN, RF, QDA, and SVM. Ultimately, we aimed to design algorithms that will perform well on data sets lacking any expert labels. 
   
 
 # Data
 
-  Our data comprises 3 images which represent pictures taken from the MISR. Each image text file comprises 11 columns. The first two columns represent the y and x coordinates of the pixel, and the third column represent the expert label (+1= cloud, -1= not cloud, 0= unlabeled). The fourth, fifth, and sixth columns were features engineered by Shi et. al. They are: the Normalized Difference Angular Index (NDAI) which characterizes the variations in a scene with the variations in the MISR view direction, the standard deviation (SD) of MISR nadir camera pixel values across a scene, and the correlation (CORR) of MISR images of the same scene from different MISR viewing directions (). Columns 7 to 11 represent the radiance angles DF, CF, BF, AF, and AN from the MISR.
+  Our data comprises 3 images which represent pictures taken from the MISR. Each image text file comprises 11 columns. The first two columns represent the y and x coordinates of the pixel, and the third column represent the expert label (+1= cloud, -1= not cloud, 0= unlabeled). The fourth, fifth, and sixth columns were features engineered by Shi et. al. They are: the Normalized Difference Angular Index (NDAI) which characterizes the variations in a scene with the variations in the MISR view direction, the standard deviation (SD) of MISR nadir camera pixel values across a scene, and the correlation (CORR) of MISR images of the same scene from different MISR viewing directions (Shi et al. 2008). Columns 7 to 11 represent the radiance angles DF, CF, BF, AF, and AN from the MISR.
   
 ## Data Collection
 
@@ -351,6 +351,16 @@ a greater degree of separation.
 
 ### 2. Classifiers 
 
+Logistic regression model: logistic regression is a standard and canonical choice of classification problems when the outcome is binary. In the logistic model, we assume the data points are independently and identically distributed from a model where the probability of outcome being 1 is equal to a non-linear (sigmoid) transform of some linear combinations of the covariates. Both the generalized linearity and the IID assumptions are very strong. Specifically, the independence assumption is likely to be violated in our dataset due to spatial correlation. We need to be careful when interpreting the regression coefficients. However, in this lab, our main goal is the prediction problem instead of estimating the coefficients in the specified logistic model, we focus less on the model assumption verification and evaluate the models mainly from the perspective of prediction performance. We also fit logistic regression with l1 regularization penalty to avoid over-fitting.\  
+
+KNN: KNN is a classification model where we predict the binary outcome of a single point by referring to the values of its k nearest neighbors, where k is a hyper-parameter we need to tune. This non-parametric model does not make assumptions about independence between data points or the specific probability distributions of the data. Therefore, we are able to use it even though we observe high spatial correlations in our cloud data.\  
+
+Random forest: random forest is an ensemble machine learning model for classification and prediction. We construct various decision trees from the bootstrapped subsample of training data and summarize the results to a predicted value of the outcome from the random forest. For each decision tree, we can train it on only a subset of all covariates to determine splits that best separate the two classes. Random forest is also a non-parametric model that makes minimal assumptions on the distribution of the data points.\  
+
+Quadratic Discriminant Analysis (QDA): QDA is a version of Bayesian classification model which finds the linear separation in the second-order polynomial basis expansion of the covariates. It captures the lower-order linear interactions between covariates that separate the positive vs negative outcomes. The main model assumption QDA makes is that the covariates from the two classes have normal probability distributions with (possibly) different covariance matrices. As shown in our ggpair plot, not all covariates are obviously normally distributed thus it is likely the assumption is not perfectly satisfied in our data.\  
+
+Support Vector Machines (SVM): SVM efficiently performs a non-linear classification by implicitly mapping the inputs into high-dimensional covariate spaces and then constructing a hyperplane separating the two classes of data points. It also makes the independence assumption between observations, which is likely to be violated in our dataset. Moreover, it assumes that in the true underlying data generating process, the two classes are linearly separable, which is another strong assumption in our dataset.
+
 ### 3. Fitting Models 
 
 Before the models were fit to the data, we separated each image into a grid 
@@ -375,7 +385,7 @@ was fit to the training set, before the model was evaluated on the validation se
 In the plot below, you can see that accuracy for KNN was maximized at $k=50$ nearest
 neighbors.
 
-```{r  fig.width = 15, fig.height=5, out.width='100%', out.height='100%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for KNN",fig.show='hold',fig.align='center',}
+```{r  fig.width = 15, fig.height=5, out.width='50%', out.height='50%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for KNN",fig.show='hold',fig.align='center',}
 
 img1 <-  rasterGrob(as.raster(readPNG("figures/knn_cross_validation.png")), interpolate = FALSE)
 grid.arrange(img1)
@@ -387,7 +397,7 @@ that controls the number of variables that are randomly sampled as
 candidates in each split. From the plot below, we can see that a value of 2 
 maximized the accuracy of the random forest classifier. 
 
-```{r  fig.width = 15, fig.height=5, out.width='100%', out.height='100%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for Random Forest",fig.show='hold',fig.align='center',}
+```{r  fig.width = 15, fig.height=5, out.width='50%', out.height='50%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for Random Forest",fig.show='hold',fig.align='center',}
 
 img1 <-  rasterGrob(as.raster(readPNG("figures/rf_cross_validation.png")), interpolate = FALSE)
 grid.arrange(img1)
@@ -397,7 +407,7 @@ grid.arrange(img1)
 
 Finally, we used cross-fit to tune the hyper parameter, $\lambda$ of the regularized logistic regression.
 
-```{r  fig.width = 15, fig.height=5,  out.width='100%', out.height='100%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for Logistic Regression",fig.show='hold',fig.align='center',}
+```{r  fig.width = 15, fig.height=5,  out.width='50%', out.height='50%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for Logistic Regression",fig.show='hold',fig.align='center',}
 
 img1 <-  rasterGrob(as.raster(readPNG("figures/logit_cross_fit.png")), interpolate = FALSE)
 grid.arrange(img1)
@@ -444,9 +454,164 @@ maintains the highest accuracy and precision, but the KNN model has similar accu
 higher recall. Since in this application we are more concerned with false positives,
 or ground being labeled as clouds, logistic regression is the preferred model.
 
-### 4. Random Forest Convergence 
+### 4. Random Forest Convergence and Feature Importance
+
+```{r  fig.width = 15, fig.height=5, out.width='50%', out.height='50%', fig.cap="ROC Curves for Models", fig.cap="Convergence of the Random Forest model",fig.show='hold',fig.align='center'}
+img1 <-  rasterGrob(as.raster(readPNG("Error/convergence.png")), interpolate = FALSE)
+
+grid.arrange(img1, ncol = 1)
+```
+Here, we are assessing the convergence of our Random Forest model using the Out of Bag (OOB) error. As shown on the figure, the OOB error decreases as more trees are added to the model. Convergence seems to be achieved after adding approximately 250 trees. 
+
+```{r  fig.width = 15, fig.height=5, out.width='50%', out.height='50%', fig.cap="ROC Curves for Models", fig.cap=" Ploting the Feature Importance of the Random Forest model",fig.show='hold',fig.align='center'}
+img1 <-  rasterGrob(as.raster(readPNG("figures/rf_feature_importance.png")), interpolate = FALSE)
+
+grid.arrange(img1, ncol = 1)
+```
+
+Next, we show the feature importance of the Random Forest Model through the Mean Decrease Accuracy and Mean Decrease Gini. The Mean Decrease Accuracy shows how much accuracy the model loses by removing a feature and the Mean Decrease Gini expresses the average gain of homogeneity by splits of a given variable. The higher these metrics for each feature, the more important the feature is. As shown on the figure, the most important feature seems to be the Average NDAI.  
 
 ### 5. Post-Hoc EDA 
+
+Here, we present visual and quantitative analysis of the misclassified data for the logistic regression model. 
+
+```{r fig.width = 8, fig.height=5, out.width='60%', out.height='80%',fig.cap="Comparing missclassified test data to ground truth ",fig.show='hold',fig.align='center'}
+
+#loading test prediction and full data
+test_pred <- read.csv("results/logit_predictions.csv")
+full_data <- read.csv("data/full_data.csv")
+
+#filter misclassified pixels
+img_miss <- test_pred %>%
+  filter(logit_pred_binary != X.1)
+
+#find test data
+full_data$pixel_number <- 1:nrow(full_data)
+test_data <- full_data %>%
+  filter(pixel_number %in% test_pred$X)
+
+test_data_img2 <- test_data %>% 
+  filter(image == "image2") 
+
+test_data_img3 <- test_data %>% 
+  filter(image == "image3")
+
+# find misclassified test data
+test_miss <- full_data %>% 
+  filter(pixel_number %in% img_miss$X) 
+
+test_miss_img2 <- test_miss %>% 
+  filter(image == "image2") 
+
+test_miss_img3 <- test_miss %>% 
+  filter(image == "image3")
+
+gt_heatmap <- function(index, img, miss_or_not){
+  return(ggplot(img, aes(x = x,y = y, fill = label_fact)) + geom_tile() + labs(title = paste(c("Misclassification for Test Data - Image ","Ground Truth for Test Data - Image  ")[miss_or_not], index)) +
+  scale_fill_brewer(labels = c("Not Cloud", "Cloud"), palette = "Blues", direction = -1, name = "") + theme(panel.background =     element_blank(),plot.background = element_blank(), axis.text.x=element_blank(),
+      axis.ticks.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks.y=element_blank()))
+}
+
+test_miss_img2$label_fact <- as.factor(test_miss_img2$label_final)
+test_data_img2$label_fact <- as.factor(test_data_img2$label_final)
+test_miss_img3$label_fact <- as.factor(test_miss_img3$label_final)
+test_data_img3$label_fact <- as.factor(test_data_img3$label_final)
+
+map1 <- gt_heatmap(2, test_miss_img2, 1)
+map2 <- gt_heatmap(2, test_data_img2, 2)
+map3 <- gt_heatmap(3, test_miss_img3, 1)
+map4 <- gt_heatmap(3, test_data_img3, 2)
+
+ggarrange(map1, map2, map3, map4, common.legend = TRUE, ncol = 2, nrow = 2)
+
+
+```
+
+From the plot, and especially for image 2, we notice that the model has trouble classifying pixels that are on the borders between "cloud" and "not cloud" regions. Most of the misclassified pixels seem to be "not cloud" regions. When comparing these plots to the expert labels, we notice that the misclassified labels  for "not cloud" regions are next to unlabeled regions.\  
+
+We also investigated the distribution of each feature for misclassified and correctly classified data.
+
+```{r distribution, fig.width = 12, fig.height=6, out.width='100%', out.height='100%', fig.cap="Plotting distributions of test data for all features " }
+
+#loading test prediction and full data
+test_pred <- read.csv("results/logit_predictions.csv")
+full_data <- read.csv("data/full_data.csv")
+
+#filter misclassified pixels
+img_miss <- test_pred %>%
+  filter(logit_pred_binary != X.1)
+
+#find test data
+full_data$pixel_number <- 1:nrow(full_data)
+test_data <- full_data %>%
+  filter(pixel_number %in% test_pred$X)
+
+# find misclassified test data
+test_miss <- full_data %>% 
+  filter(pixel_number %in% img_miss$X) 
+
+# find correctly classified test data
+test_correct <- test_data %>% 
+  subset(., !(pixel_number %in% img_miss$X)) 
+
+plot_distribution <- function(index, df, feats){
+  return(ggplot(df, aes(x = {{feats}}, fill = factor(label_final))) + geom_density(alpha = 0.4)+ labs(title = c("Misclassified data","Correctly classified data")[index]) + scale_fill_manual(labels=c("Not Cloud", "Cloud"), values = c("blue", "red"), name = "") + theme_bw())
+}
+
+ndai_miss_dist <- plot_distribution(index=1, df=test_miss, feats= NDAI)
+ndai_corr_dist <- plot_distribution(index=2, df=test_correct, feats= NDAI)
+
+sd_miss_dist <- plot_distribution(index=1, df=test_miss, feats= SD)
+sd_corr_dist <- plot_distribution(index=2, df=test_correct, feats= SD)
+
+corr_miss_dist <- plot_distribution(index=1, df=test_miss, feats= CORR)
+corr_corr_dist <- plot_distribution(index=2, df=test_correct, feats= CORR)
+
+df_miss_dist <- plot_distribution(index=1, df=test_miss, feats= DF)
+df_corr_dist <- plot_distribution(index=2, df=test_correct, feats= DF)
+
+cf_miss_dist <- plot_distribution(index=1, df=test_miss, feats= CF)
+cf_corr_dist <- plot_distribution(index=2, df=test_correct, feats= CF)
+
+bf_miss_dist <- plot_distribution(index=1, df=test_miss, feats= BF)
+bf_corr_dist <- plot_distribution(index=2, df=test_correct, feats= BF)
+
+af_miss_dist <- plot_distribution(index=1, df=test_miss, feats= AF)
+af_corr_dist <- plot_distribution(index=2, df=test_correct, feats= AF)
+
+an_miss_dist <- plot_distribution(index=1, df=test_miss, feats= AN)
+an_corr_dist <- plot_distribution(index=2, df=test_correct, feats= AN)
+
+plot <- ggarrange(ndai_miss_dist, ndai_corr_dist, sd_miss_dist, sd_corr_dist,
+          corr_miss_dist, corr_corr_dist, df_miss_dist, df_corr_dist,
+          cf_miss_dist, cf_corr_dist, bf_miss_dist, bf_corr_dist,
+          af_miss_dist, af_corr_dist, an_miss_dist, an_corr_dist,
+          ncol = 4, nrow = 4, common.legend = TRUE)
+
+```
+
+By looking at the plot, we notice that the feature range and distribution for the misclassified data seem to be unusual; They seem to be opposite to the general trend of the correctly classified data.
+
+Next, we investigate the predictions quantitatively. 
+
+```{r, fig.width=17, fig.height=5, fig.cap="Plotting two-way correlation matrices of the features of predictions.",  out.width='100%' }
+
+par(mfrow = c(1, 2))
+
+M <- cor(test_miss[4:13]) # exclude x and y in collelation matrix
+
+c1 <- corrplot(M, method="number", title = "Misclassified data",mar=c(0,0,2,0))
+
+M2 <- cor(test_correct[4:13])
+
+c2 <- corrplot(M2, method="number", title = "Correctly classified data", mar=c(0,0,2,0))
+
+
+```
+
+The correlation metrics show that the final label for the misclassiied data are negatively correlated with NDAI, SD, CORR, Avg_NDAI, while they are positively correlated to the same features for the correctly classified data. Moreover, the final label is positively correlated to the radiance angles, while they are negatively correlated for the correctly classified data. 
 
 ### 6. Implication of Results in an Unsupervised Setting 
 
