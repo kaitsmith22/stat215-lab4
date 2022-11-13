@@ -584,12 +584,13 @@ af_corr_dist <- plot_distribution(index=2, df=test_correct, feats= AF)
 an_miss_dist <- plot_distribution(index=1, df=test_miss, feats= AN)
 an_corr_dist <- plot_distribution(index=2, df=test_correct, feats= AN)
 
-plot <- ggarrange(ndai_miss_dist, ndai_corr_dist, sd_miss_dist, sd_corr_dist,
+p <- ggarrange(ndai_miss_dist, ndai_corr_dist, sd_miss_dist, sd_corr_dist,
           corr_miss_dist, corr_corr_dist, df_miss_dist, df_corr_dist,
           cf_miss_dist, cf_corr_dist, bf_miss_dist, bf_corr_dist,
           af_miss_dist, af_corr_dist, an_miss_dist, an_corr_dist,
           ncol = 4, nrow = 4, common.legend = TRUE)
 
+p
 ```
 
 By looking at the plot, we notice that the feature range and distribution for the misclassified data seem to be unusual; They seem to be opposite to the general trend of the correctly classified data.
