@@ -79,7 +79,7 @@ img3$label_final <- replace(img3$label, img3$label == 0, 1)
 
 ### 1. Expert labels 
 
-First, we'll look at the the expert labels for the presece of clouds:
+First, we'll look at the the expert labels for the presence of clouds:
 <br> 
 <br> 
 
@@ -294,7 +294,7 @@ The hyperparameters that resulted in the model with the highest accuracy were ch
 In the plot below, you can see that accuracy for KNN was maximized at $k=50$ nearest
 neighbors.
 
-```{r  fig.width = 15, fig.height=7, out.width='75%', out.height='75%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for KNN",fig.show='hold',fig.align='center',}
+```{r  fig.width = 15, fig.height=7, out.width='75%', out.height='75%', fig.cap="Hyperparameter tuning for KNN",fig.show='hold',fig.align='center',}
 
 img1 <-  rasterGrob(as.raster(readPNG("figures/knn_cross_validation.png")), interpolate = FALSE)
 grid.arrange(img1)
@@ -306,7 +306,7 @@ that controls the number of variables that are randomly sampled as
 candidates in each split. From the plot below, we can see that a value of 2 
 maximized the accuracy of the random forest classifier. 
 
-```{r  fig.width = 15, fig.height=7, out.width='75%', out.height='75%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for Random Forest",fig.show='hold',fig.align='center',}
+```{r  fig.width = 15, fig.height=7, out.width='65%', out.height='65%', fig.cap="Hyperparameter tuning for Random Forest",fig.show='hold',fig.align='center',}
 
 img1 <-  rasterGrob(as.raster(readPNG("figures/rf_cross_validation.png")), interpolate = FALSE)
 grid.arrange(img1)
@@ -316,7 +316,7 @@ grid.arrange(img1)
 
 Finally, we used cross-fit to tune the hyper parameter, $\lambda$ of the regularized logistic regression.
 
-```{r  fig.width = 15, fig.height=7,  out.width='75%', out.height='75%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for Logistic Regression",fig.show='hold',fig.align='center',}
+```{r  fig.width = 15, fig.height=7,  out.width='65%', out.height='65%', fig.cap="Hyperparameter tuning for Logistic Regression",fig.show='hold',fig.align='center',}
 
 img1 <-  rasterGrob(as.raster(readPNG("figures/logit_cross_fit.png")), interpolate = FALSE)
 grid.arrange(img1)
@@ -362,14 +362,14 @@ or ground being labeled as clouds, logistic regression is the preferred model.
 
 ### 4. Random Forest Convergence and Feature Importance
 
-```{r  fig.width = 15, fig.height=7, out.width='75%', out.height='75%', fig.cap="ROC Curves for Models", fig.cap="Convergence of the Random Forest model",fig.show='hold',fig.align='center'}
+```{r  fig.width = 15, fig.height=7, out.width='60%', out.height='60%', fig.cap="Convergence of the Random Forest model",fig.show='hold',fig.align='center'}
 img1 <-  rasterGrob(as.raster(readPNG("Error/convergence.png")), interpolate = FALSE)
 
 grid.arrange(img1, ncol = 1)
 ```
 Here, we are assessing the convergence of our Random Forest model using the Out of Bag (OOB) error. As shown on the figure, the OOB error decreases as more trees are added to the model. Convergence seems to be achieved after adding approximately 250 trees. 
 
-```{r  fig.width = 15, fig.height=7, out.width='75%', out.height='75%', fig.cap="ROC Curves for Models", fig.cap=" Ploting the Feature Importance of the Random Forest model",fig.show='hold',fig.align='center'}
+```{r  fig.width = 15, fig.height=7, out.width='60%', out.height='60%', fig.cap=" Plotting the Feature Importance of the Random Forest model",fig.show='hold',fig.align='center'}
 img1 <-  rasterGrob(as.raster(readPNG("figures/rf_feature_importance.png")), interpolate = FALSE)
 
 grid.arrange(img1, ncol = 1)
@@ -381,7 +381,7 @@ Next, we show the feature importance of the Random Forest Model through the Mean
 
 Here, we present visual and quantitative analysis of the misclassified data for the logistic regression model. 
 
-```{r fig.width = 8, fig.height=5, out.width='60%', out.height='80%',fig.cap="Comparing missclassified test data to ground truth ",fig.show='hold',fig.align='center'}
+```{r fig.width = 8, fig.height=5, out.width='60%', out.height='70%',fig.cap="Comparing missclassified test data to ground truth ",fig.show='hold',fig.align='center'}
 
 #loading test prediction and full data
 test_pred <- read.csv("results/logit_predictions.csv")
