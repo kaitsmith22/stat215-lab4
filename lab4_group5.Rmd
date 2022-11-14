@@ -23,6 +23,9 @@ library(knitr)
 library("GGally")
 library(png)
 library(grid)
+library(flextable)
+library(huxtable)
+library(formatR)
 
 # set default knitr chunks
 knitr::opts_chunk$set(
@@ -39,12 +42,12 @@ knitr::opts_chunk$set(
 
 ```{r load-data, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE}
 feature_names <- c("x", "y", "label", "NDAI", "SD","CORR", "DF", "CF", "BF", "AF", "AN")
-img1 <- read.csv("data/img1_features.csv")
+img1 <- read.csv("results/img1_features.csv")
 img1$label_fact <- as.factor(img1$label) # make label a factor for plotting, but needs to be a number for correlation
 img1 <- img1[-c(16)] # remove extra feature I accidentally only generated for this one image
-img2 <- read.csv("data/img2_features.csv")
+img2 <- read.csv("results/img2_features.csv")
 img2$label_fact <- as.factor(img2$label)
-img3 <- read.csv("data/img3_features.csv")
+img3 <- read.csv("results/img3_features.csv")
 img3$label_fact <- as.factor(img3$label)
 
 img1$label_final <- replace(img1$label, img1$label == 0, 1)
@@ -55,13 +58,13 @@ img3$label_final <- replace(img3$label, img3$label == 0, 1)
 
 # Introduction
 
-  Global warming is characterized by the rapid increase in Earth's surface temperature over the past century; It is due primarily to human activities including fossil fuels burning, which increases greenhouse gases (Rexford 2020). The Earth surface temperature has increased by nearly 1 degree Celsius between 1905 and 2005, and is predicted to increase between 2-6 degree Celsius by the end of the 21st century (Rexford 2020). Models have predicted that the strongest dependencies between greenhouse gases level and earth's surface temperature will occur at the Arctic (Shi et al. 2008). As the Arctic warms faster the rest of the globe, alterations in the properties and distribution of ice-and snow-covered surfaces, atmospheric vapor, and clouds can lead to further warming, and more susceptibility to greenhouse gases levels (Shi et al. 2008). To understand these intricate relationships, a study of the cloud coverage at the Arctic is necessary as clouds play a crucial role in tuning the sensitivity of the Arctic to the rise of surface air temperatures (Shi et al. 2008).\  
+  Global warming is characterized by the rapid increase in Earth's surface temperature over the past century. It is due primarily to human activities including fossil fuels burning, which increases greenhouse gases (Rexford 2020). The Earth's surface temperature has increased by nearly 1 degree Celsius between 1905 and 2005, and is predicted to increase between 2-6 degree Celsius by the end of the 21st century (Rexford 2020). Models have predicted that the strongest dependencies between greenhouse gases level and earth's surface temperature will occur at the Arctic (Shi et al. 2008). As the Arctic warms faster than the rest of the globe, alterations in the properties and distribution of ice-and snow-covered surfaces, atmospheric vapor, and clouds can lead to further warming, and more susceptibility to greenhouse gases levels (Shi et al. 2008). To understand these intricate relationships, a study of the cloud coverage at the Arctic is necessary as clouds play a crucial role in tuning the sensitivity of the Arctic to the rise of surface air temperatures (Shi et al. 2008).\  
   
   However, studying Arctic clouds is challenging because liquid and ice water cloud particles have similar physical properties to ice and snow surfaces particles. Thus, distinguishing Arctic clouds from water or ice using their electromagnetic radiation is challenging. Thanks to a National Aeronautics, and Space Administration (NASA) effort, a Multiangle Imaging SpectroRadiometer (MISR) was launched on the Terra satellite in 1999. This radiometer produces novel radiation measurements from nine view angles. The nine view zenith angles of the cameras are 70.5" (Df), 60.0" (Cf), 45.6" (Bf), and 26.1" (Af) in the forward direction; 0.0" (An) in the nadir direction and 26.1" (Aa), 45.6" (Ba), 60.0" (Ca), and 70.5" (Da) in the aft direction. Thus, the MISR produces a large amount of data thanks to its 360 km-wide swath coverage on the Earth's surface that extends from the Arctic down to Antarctica in approximately 45 minutes.\  
 
   Although the MISR produces a high resolution data, its operational cloud detection system was designed before its launch and proved to not be effective for detecting clouds over bright surfaces in polar regions. Solving the polar cloud detection problem requires efficient statistical models, capable of handling the massive data set while incorporating scientific and operational considerations.\  
   
-  In this paper, we explored a MISR data of polar regions and implemented various polar cloud detection algorithms based on expert labels. The algorithms implemented include logistic regression (w/ & w/o regularization), KNN, RF, QDA, and SVM. Ultimately, we aimed to design algorithms that will perform well on data sets lacking any expert labels. 
+  In this paper, we explored a MISR data of polar regions and implemented various polar cloud detection algorithms based on expert labels. The algorithms implemented include logistic regression (with and without regularization), KNN, RF, QDA, and SVM. Ultimately, we aimed to design algorithms that will perform well on data sets lacking any expert labels. 
   
 
 # Data
@@ -107,7 +110,7 @@ ggarrange(plotlist = c(list(map1), list(map2), list(map3)), ncol = 3, common.leg
   
 ### Rational for Converting Unlabeled pixels to "Cloud" Labels 
 
-  Next, we explored the distribution of the cloud labels. It appeared that the cloud labels is contained in the labels that were unlabeled. For this reason, we decided to consider the unlabeled pixels as cloudy pixels.
+  Next, we explored the distribution of the cloud labels. It appeared that the cloud labels is contained in the labels that were unlabeled. For this reason, we decided to consider the unlabeled pixels as cloudy pixels. Following this conversion, we notice that our images now contain more cloudy pixels than non-cloudy ones.
 
 ```{r NDAI distribution, fig.width = 15, fig.height=5, out.width='100%', out.height='100%', fig.cap="Plotting distributions of cloud expert labels vs NDAI" }
 # TODO: CHANGE COLORS
@@ -121,7 +124,6 @@ ndai_label3 <- ggplot(img3, aes(x = NDAI, fill = factor(label))) + geom_density(
 ggarrange(ndai_label1, ndai_label2, ndai_label3, ncol = 3, common.legend = TRUE)
 ```
 
-Thus, we added "label_final" feature that converts all of the unlabeled pixels to cloud labels. Following this conversion, we notice that our images now contain more cloudy pixels than non-cloudy ones.
 
 ```{r}
 img1$label_final <- replace(img1$label, img1$label == 0, 1)
@@ -180,12 +182,12 @@ ggarrange(plotlist = c(list(angle1), list(angle2), list(angle3)), nrow = 3)
 
 ```
  
-It appears as though high values of NDAI indicate the presence of clouds. However,
+  It appears as though high values of NDAI indicate the presence of clouds. However,
 the highest values of NDAI correspond to the regions that the expert failed to label.
 More subtlety, you can see that higher values of CORR also indicate the presence of 
 clouds. 
 
-  Our next step was exploring the features quantitatively. Thus, we investigated the correlation of our features to the labels for each image. As shown below, it appears that NDAI has the strongest correlation with the labels. For image1 and image2, it appears that the angles of radiance also have a negative correlation. However, image3 does not have this relationship with the labels. In addition, it appears that NDAI and SD have a positive correlation.
+  Our next step was exploring the features quantitatively. Thus, we investigated the correlation of our features to the labels for each image. As shown below, it appears that NDAI has the strongest correlation with the labels. For image1 and image2, it appears that the angles of radiance also have a negative correlation. However, image3 does not have a meaningful negative correlation between the angles of radiance and the labels. However, the engineered features, NDAI, SD, and CORR, have a positive correlation with the labels between all of the images.
   
   
 ```{r, fig.width=15, fig.cap="Plotting two-way correlation matrices of the features for images 1,2 and 3.",  out.width='100%' }
@@ -206,133 +208,30 @@ c3 <- corrplot(M3, method="number", title = "Image 3",mar=c(0,0,2,0))
 
 ```
 
-
-# Modeling
-
-## Feature Engineering 
+# Feature Engineering 
 
 Although many features were engineered by combining and transforming the above 
 features in various combinations, we'll only present the feature
 that outperformed CORR, NDAI, and SD.
 
-### Average NDAI 
+## Average NDAI 
 
 From the correlation matrix, it appeared that NDAI was the feature 
 that was most correlated with the labels. Intuitively, the spacial aspect 
 of this data is important. We expect "cloud" pixels and "not cloud" pixels 
 to be clustered together. Or, if a label is "cloud", we would expect 
-the other pixels around it to also be labeled as "cloud". Thus, we'll
-construct a feature whose values for a given pixel is the average of the 
-NDAI values for the 8 pixels around the pixel. If a pixel is on the edge of 
-the image, the minimum value of $(x, mod(x + 4, max(x val)))$ is taken. 
+the other pixels around it to also be labeled as "cloud". Thus, we
+constructed a feature whose values for a given pixel is the average of the 
+NDAI values for the 16 pixels around the pixel. If a pixel is on the edge of 
+the image, the minimum value of $(x, mod(x + 4, max(xval)))$ is taken. Where $x$
+ is the index for a given pixel and $xval$ is the number of pixels in that row or column.
+ Since the data is not square, $xval$ changes from row to row and column to column.
 
+# Modeling
 
-```{r}
-# # converted the dataframe to matrices for speed-up
-# data <- as.matrix(img1[c("x", "y", "NDAI")])
-# get_average_matrix <- function(index){
-# 
-#   this_y <- data[index, 2]
-#   this_x <- data[index, 1]
-#   # get all of the columns with x and y values in the range we want. This works even if the area we find is not square (because the data isn't #   square). Then find the mean of the NDAI column for this region
-# 
-#   avg <- mean((data[data[,1] >= this_x - 4 & data[,1] <= this_x + 4 & data[,2] >= this_y - 4 & data[,2] <= this_y + 4, ])[,3]) 
-#   
-#   return(avg)
-# }
-# 
-# avg_NDAI_img1 <- lapply(1:nrow(img1), get_average_matrix)
+## Selecting The Three Best Features 
 
-```
-```{r}
-# img2_matrix <- as.matrix(img2[c("x", "y", "NDAI")])
-# get_average_matrix_img2 <- function(index){
-# 
-#   this_y <- img2_matrix[index, 2]
-#   this_x <- img2_matrix[index, 1]
-# 
-#   avg <- mean((img2_matrix[img2_matrix[,1] >= this_x - 4 & img2_matrix[,1] <= this_x + 4 & img2_matrix[,2] >= this_y - 4 & img2_matrix[,2] <= this_y + 4, ])[,3])
-#   
-#   return(avg)
-# }
-# 
-# img3_matrix <- as.matrix(img3[c("x", "y", "NDAI")])
-# get_average_matrix_img3 <- function(index){
-# 
-#   this_y <- img3_matrix[index, 2]
-#   this_x <- img3_matrix[index, 1]
-# 
-#   avg <- mean((img3_matrix[img3_matrix[,1] >= this_x - 4 & img3_matrix[,1] <= this_x + 4 & img3_matrix[,2] >= this_y - 4 & img3_matrix[,2] <= this_y + 4, ])[,3])
-#   
-#   return(avg)
-# }
-# 
-# avg_NDAI_img2 <- lapply(1:nrow(img2), get_average_matrix_img2)
-# 
-# avg_NDAI_img3 <- lapply(1:nrow(img3), get_average_matrix_img3)
-
-```
-
-
-
-```{r}
-#img1$Avg_NDAI <- unlist(avg_NDAI_img1)
-# 
-#img2$Avg_NDAI <- unlist(avg_NDAI_img2)
-# 
-#img3$Avg_NDAI <- unlist(avg_NDAI_img3)
-```
-
-```{r}
-
-# modify_rad <- function(DF, CF, AF, AN){
-#   return((DF*CF - AN*AF)/(DF*CF + AN*AF))
-# }
-# 
-# mult_rad <- function(DF, CF, BF, AF, AN){
-#   return(DF * CF * AF * AN)
-# }
-# 
-# mult_ndai_sd <- function(ndai, sd){
-#   return(ndai * sd)
-# }
-# 
-# # new features for image 1
-# 
-# img1 <- img1 %>% mutate(Sub_Feat = unlist(pmap(img1[c("DF", "CF", "AF", "AN")], function(DF, CF, AF, AN) modify_rad(DF = DF, CF = CF, AF = AF, AN = AN))))
-# 
-# img1 <- img1 %>% mutate(Mult_Rads = unlist(pmap(img1[c("DF", "CF", "BF", "AF", "AN")], function(DF, CF, BF, AF, AN) mult_rad(DF = DF, CF = CF, BF = BF, AF = AF, AN = AN))))
-# 
-# img1 <- img1 %>% mutate(Mult_AvgNDAi_SD = unlist(pmap(img1[c("Avg_NDAI", "SD")], function(Avg_NDAI, SD) mult_ndai_sd(ndai = Avg_NDAI, sd = SD))))
-# 
-# # repeat for image 2
-# img2 <- img2 %>% mutate(Sub_Feat = unlist(pmap(img2[c("DF", "CF", "AF", "AN")], function(DF, CF, AF, AN) modify_rad(DF = DF, CF = CF, AF = AF, AN = AN))))
-# 
-# img2 <- img2 %>% mutate(Mult_Rads = unlist(pmap(img2[c("DF", "CF", "BF", "AF", "AN")], function(DF, CF, BF, AF, AN) mult_rad(DF = DF, CF = CF, BF = BF, AF = AF, AN = AN))))
-# 
-# img2 <- img2 %>% mutate(Mult_AvgNDAi_SD = unlist(pmap(img2[c("Avg_NDAI", "SD")], function(Avg_NDAI, SD) mult_ndai_sd(ndai = Avg_NDAI, sd = SD))))
-# 
-# # repeat for image 3
-# img3 <- img3 %>% mutate(Sub_Feat = unlist(pmap(img3[c("DF", "CF", "AF", "AN")], function(DF, CF, AF, AN) modify_rad(DF = DF, CF = CF, AF = AF, AN = AN))))
-# 
-# img3 <- img3 %>% mutate(Mult_Rads = unlist(pmap(img3[c("DF", "CF", "BF", "AF", "AN")], function(DF, CF, BF, AF, AN) mult_rad(DF = DF, CF = CF, BF = BF, AF = AF, AN = AN))))
-# 
-# img3 <- img3 %>% mutate(Mult_AvgNDAi_SD = unlist(pmap(img3[c("Avg_NDAI", "SD")], function(Avg_NDAI, SD) mult_ndai_sd(ndai = Avg_NDAI, sd = SD))))
-
-```
-
-
-```{r}
-# save data
-# write.csv(img1, "data/img1_features.csv", row.names = FALSE)
-# write.csv(img2, "data/img2_features.csv", row.names = FALSE)
-# write.csv(img3, "data/img3_features.csv", row.names = FALSE)
-```
-
-
-### 1. Selecting The Three Best Features 
-
-After engineering the specified feature, we'll now re-examine the 
+After engineering the specified feature, we now re-examine the 
 relationship between the expert labels and these new features. This pair
 plot was generated on the feature data from all 3 images combined.
 
@@ -345,17 +244,17 @@ ggpairs(full_data, columns = c(12, 13, 4, 5, 6), aes(color = label_final_fact, a
 
 After comparing these results with the results presented above, 
 we conclude that Average NDAI is the feature that is most correlated with 
-the expert labels. While both NDAI and Average NDAI separte the pixels into 
+the expert labels. While both NDAI and Average NDAI separate the pixels into 
 cloud and not cloud distributions, the Average NDAI feature further provides 
-a greater degree of separation.
+a greater degree of separation. 
 
 ### 2. Classifiers 
 
-Logistic regression model: logistic regression is a standard and canonical choice of classification problems when the outcome is binary. In the logistic model, we assume the data points are independently and identically distributed from a model where the probability of outcome being 1 is equal to a non-linear (sigmoid) transform of some linear combinations of the covariates. Both the generalized linearity and the IID assumptions are very strong. Specifically, the independence assumption is likely to be violated in our dataset due to spatial correlation. We need to be careful when interpreting the regression coefficients. However, in this lab, our main goal is the prediction problem instead of estimating the coefficients in the specified logistic model, we focus less on the model assumption verification and evaluate the models mainly from the perspective of prediction performance. We also fit logistic regression with l1 regularization penalty to avoid over-fitting.\  
+Logistic regression model: Logistic regression is a standard and canonical choice of classification model when the outcome is binary. In the logistic model, we assume the data points are independently and identically distributed from a model where the probability of outcome being 1 is equal to a non-linear (sigmoid) transform of some linear combinations of the covariates. Both the generalized linearity and the IID assumptions are very strong. Specifically, the independence assumption is likely to be violated in our dataset due to spatial correlation. We need to be careful when interpreting the regression coefficients. However, in this lab, our main goal is the prediction problem instead of estimating the coefficients in the specified logistic model, we focus less on the model assumption verification and evaluate the models mainly from the perspective of prediction performance. We also fit logistic regression with l1 regularization penalty to avoid over-fitting.\  
 
 KNN: KNN is a classification model where we predict the binary outcome of a single point by referring to the values of its k nearest neighbors, where k is a hyper-parameter we need to tune. This non-parametric model does not make assumptions about independence between data points or the specific probability distributions of the data. Therefore, we are able to use it even though we observe high spatial correlations in our cloud data.\  
 
-Random forest: random forest is an ensemble machine learning model for classification and prediction. We construct various decision trees from the bootstrapped subsample of training data and summarize the results to a predicted value of the outcome from the random forest. For each decision tree, we can train it on only a subset of all covariates to determine splits that best separate the two classes. Random forest is also a non-parametric model that makes minimal assumptions on the distribution of the data points.\  
+Random forest: Random forest is an ensemble machine learning model for classification and prediction. We construct various decision trees from the bootstrapped subsample of training data and summarize the results to a predicted value of the outcome from the random forest. For each decision tree, we can train it on only a subset of all covariates to determine splits that best separate the two classes. Random forest is also a non-parametric model that makes minimal assumptions on the distribution of the data points.\  
 
 Quadratic Discriminant Analysis (QDA): QDA is a version of Bayesian classification model which finds the linear separation in the second-order polynomial basis expansion of the covariates. It captures the lower-order linear interactions between covariates that separate the positive vs negative outcomes. The main model assumption QDA makes is that the covariates from the two classes have normal probability distributions with (possibly) different covariance matrices. As shown in our ggpair plot, not all covariates are obviously normally distributed thus it is likely the assumption is not perfectly satisfied in our data.\  
 
@@ -369,23 +268,23 @@ as a test test. The remaining 8 regions were then randomly split into training a
 
 After experimenting with the inputs to the logistic regression model,
  we found that computing the logistic regression with all of the features
-  and angles yielded the best results, which are presented here.
+  and angles yielded the best results. The results from this model are presented here.
 
 Due to computability constraints, we ran SVM on a random subsample of 50,000 
-datapoints from the training data, and the model was evaluated on SOME NUMBER 
-of points from the testing data. We used the default hyperparameters for 
+datapoints from the training data, but the model was evalutated on the full 
+test set. We used the default hyperparameters for 
 SVM as we did not have the computational power to utilize cross validation to 
 fine-tune the parameters.
 
 We fine-tuned the hyperparameters for the KNN and Random Forest models using cross
 validation. For each proposed value of the hyperparameter, the given model
-was fit to the training set, before the model was evaluated on the validation set.
-
+was fit to the training set before the model was evaluated on the validation set.
+The hyperparameters that resulted in the model with the highest accuracy were chosen.
 
 In the plot below, you can see that accuracy for KNN was maximized at $k=50$ nearest
 neighbors.
 
-```{r  fig.width = 15, fig.height=5, out.width='50%', out.height='50%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for KNN",fig.show='hold',fig.align='center',}
+```{r  fig.width = 15, fig.height=7, out.width='75%', out.height='75%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for KNN",fig.show='hold',fig.align='center',}
 
 img1 <-  rasterGrob(as.raster(readPNG("figures/knn_cross_validation.png")), interpolate = FALSE)
 grid.arrange(img1)
@@ -397,7 +296,7 @@ that controls the number of variables that are randomly sampled as
 candidates in each split. From the plot below, we can see that a value of 2 
 maximized the accuracy of the random forest classifier. 
 
-```{r  fig.width = 15, fig.height=5, out.width='50%', out.height='50%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for Random Forest",fig.show='hold',fig.align='center',}
+```{r  fig.width = 15, fig.height=7, out.width='75%', out.height='75%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for Random Forest",fig.show='hold',fig.align='center',}
 
 img1 <-  rasterGrob(as.raster(readPNG("figures/rf_cross_validation.png")), interpolate = FALSE)
 grid.arrange(img1)
@@ -407,7 +306,7 @@ grid.arrange(img1)
 
 Finally, we used cross-fit to tune the hyper parameter, $\lambda$ of the regularized logistic regression.
 
-```{r  fig.width = 15, fig.height=5,  out.width='50%', out.height='50%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for Logistic Regression",fig.show='hold',fig.align='center',}
+```{r  fig.width = 15, fig.height=7,  out.width='75%', out.height='75%', fig.cap="ROC Curves for Models", fig.cap="Hyperparameter tuning for Logistic Regression",fig.show='hold',fig.align='center',}
 
 img1 <-  rasterGrob(as.raster(readPNG("figures/logit_cross_fit.png")), interpolate = FALSE)
 grid.arrange(img1)
@@ -419,7 +318,7 @@ we conclude that regularization does not benefit this model.
 
 The results for the models on the test set are presented below.
 
-```{r  fig.width = 15, fig.height=5, out.width='100%', out.height='100%', fig.cap="ROC Curves for Models", fig.cap="caption",fig.show='hold',fig.align='center'}
+```{r  fig.width = 15, fig.height=5, out.width='100%', out.height='100%', fig.cap="ROC and PR Curves for Models",fig.show='hold',fig.align='center'}
 par(mfrow = c(1, 2))
 img1 <-  rasterGrob(as.raster(readPNG("figures/roc_curves.png")), interpolate = FALSE)
 img2 <- rasterGrob(as.raster(readPNG("figures/pr_curves.png")), interpolate = FALSE)
@@ -434,9 +333,6 @@ table below, the results of the models are all comparable, with only minor diffe
 in accuracy between them. 
 
 ```{r}
-library(flextable)
-library(huxtable)
-library(formatR)
 results <- read.csv("results/error_metrics.csv")
 results <- results[-c(1)] %>% relocate(method)
 
@@ -456,14 +352,14 @@ or ground being labeled as clouds, logistic regression is the preferred model.
 
 ### 4. Random Forest Convergence and Feature Importance
 
-```{r  fig.width = 15, fig.height=5, out.width='50%', out.height='50%', fig.cap="ROC Curves for Models", fig.cap="Convergence of the Random Forest model",fig.show='hold',fig.align='center'}
+```{r  fig.width = 15, fig.height=7, out.width='75%', out.height='75%', fig.cap="ROC Curves for Models", fig.cap="Convergence of the Random Forest model",fig.show='hold',fig.align='center'}
 img1 <-  rasterGrob(as.raster(readPNG("Error/convergence.png")), interpolate = FALSE)
 
 grid.arrange(img1, ncol = 1)
 ```
 Here, we are assessing the convergence of our Random Forest model using the Out of Bag (OOB) error. As shown on the figure, the OOB error decreases as more trees are added to the model. Convergence seems to be achieved after adding approximately 250 trees. 
 
-```{r  fig.width = 15, fig.height=5, out.width='50%', out.height='50%', fig.cap="ROC Curves for Models", fig.cap=" Ploting the Feature Importance of the Random Forest model",fig.show='hold',fig.align='center'}
+```{r  fig.width = 15, fig.height=7, out.width='75%', out.height='75%', fig.cap="ROC Curves for Models", fig.cap=" Ploting the Feature Importance of the Random Forest model",fig.show='hold',fig.align='center'}
 img1 <-  rasterGrob(as.raster(readPNG("figures/rf_feature_importance.png")), interpolate = FALSE)
 
 grid.arrange(img1, ncol = 1)
@@ -479,7 +375,7 @@ Here, we present visual and quantitative analysis of the misclassified data for 
 
 #loading test prediction and full data
 test_pred <- read.csv("results/logit_predictions.csv")
-full_data <- read.csv("data/full_data.csv")
+full_data <- read.csv("results/full_data.csv")
 
 #filter misclassified pixels
 img_miss <- test_pred %>%
@@ -537,7 +433,7 @@ We also investigated the distribution of each feature for misclassified and corr
 
 #loading test prediction and full data
 test_pred <- read.csv("results/logit_predictions.csv")
-full_data <- read.csv("data/full_data.csv")
+full_data <- read.csv("results/full_data.csv")
 
 #filter misclassified pixels
 img_miss <- test_pred %>%
@@ -589,14 +485,17 @@ plot <- ggarrange(ndai_miss_dist, ndai_corr_dist, sd_miss_dist, sd_corr_dist,
           cf_miss_dist, cf_corr_dist, bf_miss_dist, bf_corr_dist,
           af_miss_dist, af_corr_dist, an_miss_dist, an_corr_dist,
           ncol = 4, nrow = 4, common.legend = TRUE)
+plot
 
 ```
+
+
 
 By looking at the plot, we notice that the feature range and distribution for the misclassified data seem to be unusual; They seem to be opposite to the general trend of the correctly classified data.
 
 Next, we investigate the predictions quantitatively. 
 
-```{r, fig.width=17, fig.height=5, fig.cap="Plotting two-way correlation matrices of the features of predictions.",  out.width='100%' }
+```{r, fig.width=20, fig.height=7, fig.cap="Plotting two-way correlation matrices of the features of predictions.",  out.width='100%' }
 
 par(mfrow = c(1, 2))
 
@@ -615,14 +514,30 @@ The correlation metrics show that the final label for the misclassiied data are 
 
 ### 6. Implication of Results in an Unsupervised Setting 
 
+The efficacy of these models on future data depends on the similarity of the 
+future data to the images that these models were trained on. Ultimately,
+this comes down to the comparability principle. If supposed future images 
+are comparable to this dataset, then we believe that the model would work well.
+However, if MISR data is taken on a different instrument, or even taken with the 
+the same satellite that has been calibrated differently, these models would not 
+provide adequate results. In addition, it is important to note that 
+these images are from one path of the 233 geographically distinct MISR swaths. 
+Although we could hypothesize that the data from path 26 would be comparable to 
+the 232 other paths, more analysis would be needed to support this claim.
+
+
 
 # Academic honesty statement
+
+We certify that the work above is our own, and collaborators and 
+references have been cited as appropriate.
 
 
 # Collaborators
 
 We'd like to thank our GSI, Theo Saarinen, for his support 
-and direction on feature engineering. 
+and direction on feature engineering, specifically for mentioning to 
+consider the spatial aspect of the NDAI feature. 
 
 
 # Bibliography
