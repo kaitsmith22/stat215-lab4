@@ -233,7 +233,8 @@ the image, the minimum value of $(x, mod(x + 4, max(xval)))$ is taken. Where $x$
 
 After engineering the specified feature, we now re-examine the 
 relationship between the expert labels and these new features. This pair
-plot was generated on the feature data from all 3 images combined.
+plot was generated on 50000 samples from the entire dataset to save 
+both compile time and space.
 
 ```{r  fig.width = 15, fig.height=7, out.width='100%', out.height='100%', fig.cap="Pair Plot to Select Best Features"}
 full_data <- read.csv("results/full_data.csv")
@@ -244,7 +245,7 @@ random_sample_index <- sample(1:nrow(full_data), 50000, FALSE)
 
 sub_data <- full_data[random_sample_index, ]
 
-ggpairs(full_data, columns = c(12, 13, 4, 5, 6), aes(color = label_final_fact, alpha = 0.5), lower = list(combo = "box", continous = "blank"), upper = list(continuous = "cor")) + theme_bw()
+ggpairs(sub_data, columns = c(12, 13, 4, 5, 6), aes(color = as.factor(label_final), alpha = 0.5), lower = list(combo = "box", continous = "blank"), upper = list(continuous = "cor")) + theme_bw()
 ```
 
 
@@ -252,7 +253,10 @@ After comparing these results with the results presented above,
 we conclude that Average NDAI is the feature that is most correlated with 
 the expert labels. While both NDAI and Average NDAI separate the pixels into 
 cloud and not cloud distributions, the Average NDAI feature further provides 
-a greater degree of separation. 
+a greater degree of separation. SD also separates the data into cloud 
+and not cloud distributions, but to a much lesser extent than the NDAI features.
+Hence, we conclude that Average NDAI, NDAI, and SD are the three best features to 
+represent this data.
 
 ### 2. Classifiers 
 
