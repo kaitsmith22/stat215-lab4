@@ -236,8 +236,14 @@ relationship between the expert labels and these new features. This pair
 plot was generated on the feature data from all 3 images combined.
 
 ```{r  fig.width = 15, fig.height=7, out.width='100%', out.height='100%', fig.cap="Pair Plot to Select Best Features"}
-full_data <- rbind(img1, img2, img3)
-full_data$label_final_fact <- as.factor(full_data$label_final)
+full_data <- read.csv("results/full_data.csv")
+
+# randomly sample points to reduce output size of file and increase computation time
+set.seed(215)
+random_sample_index <- sample(1:nrow(full_data), 50000, FALSE)
+
+sub_data <- full_data[random_sample_index, ]
+
 ggpairs(full_data, columns = c(12, 13, 4, 5, 6), aes(color = label_final_fact, alpha = 0.5), lower = list(combo = "box", continous = "blank"), upper = list(continuous = "cor")) + theme_bw()
 ```
 
@@ -480,14 +486,13 @@ af_corr_dist <- plot_distribution(index=2, df=test_correct, feats= AF)
 an_miss_dist <- plot_distribution(index=1, df=test_miss, feats= AN)
 an_corr_dist <- plot_distribution(index=2, df=test_correct, feats= AN)
 
-p <- ggarrange(ndai_miss_dist, ndai_corr_dist, sd_miss_dist, sd_corr_dist,
+plot <- ggarrange(ndai_miss_dist, ndai_corr_dist, sd_miss_dist, sd_corr_dist,
           corr_miss_dist, corr_corr_dist, df_miss_dist, df_corr_dist,
           cf_miss_dist, cf_corr_dist, bf_miss_dist, bf_corr_dist,
           af_miss_dist, af_corr_dist, an_miss_dist, an_corr_dist,
           ncol = 4, nrow = 4, common.legend = TRUE)
 plot
 
-p
 ```
 
 
